@@ -3,9 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React from 'react';
-import { motion } from 'motion/react';
-import { X, Printer, Mail, Phone, MapPin, Github, Linkedin, Award, Briefcase, GraduationCap } from 'lucide-react';
+import React, { useRef, useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { X, Printer, Mail, Phone, MapPin, Github, Linkedin, Award, Briefcase, GraduationCap, Download, Loader2 } from 'lucide-react';
 import { personalInfo, experienceData, certificationsData, coreCompetencies } from '../data';
 
 interface PrintableCVProps {
@@ -14,10 +14,45 @@ interface PrintableCVProps {
 }
 
 export default function PrintableCV({ isOpen, onClose }: PrintableCVProps) {
+  const cvRef = useRef<HTMLDivElement>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
+
   if (!isOpen) return null;
 
   const handlePrint = () => {
     window.print();
+  };
+
+  const handleDownloadPDF = async () => {
+    if (!cvRef.current) return;
+    setIsDownloading(true);
+
+    try {
+      // Dynamically import html2pdf.js to keep the bundle size optimized
+      // @ts-ignore
+      const html2pdf = (await import('html2pdf.js')).default;
+      const element = cvRef.current;
+
+      const opt = {
+        margin: [15, 15, 15, 15],
+        filename: 'M_Wasim_Akram_Resume.pdf',
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { 
+          scale: 2, 
+          useCORS: true, 
+          letterRendering: true,
+          scrollY: 0,
+          scrollX: 0
+        },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      };
+
+      await html2pdf().set(opt as any).from(element).save();
+    } catch (error) {
+      console.error('Error generating PDF download:', error);
+    } finally {
+      setIsDownloading(false);
+    }
   };
 
   return (
@@ -27,22 +62,35 @@ export default function PrintableCV({ isOpen, onClose }: PrintableCVProps) {
         {/* Modal Top Control Bar */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-800 bg-zinc-950">
           <div className="flex items-center space-x-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-indigo-400" />
-            <span className="font-mono text-sm text-indigo-400 font-bold">PRINTER DRIVER v1.2</span>
+            <span className="w-2.5 h-2.5 rounded-full bg-indigo-400 animate-pulse" />
+            <span className="font-mono text-xs text-indigo-400 font-bold">PRINTER DRIVER v1.2</span>
           </div>
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-2 sm:space-x-3">
+            <button
+              id="btn-download-pdf"
+              onClick={handleDownloadPDF}
+              disabled={isDownloading}
+              className="flex items-center space-x-2 px-4 py-2 text-xs font-bold text-black bg-indigo-400 hover:bg-indigo-300 disabled:bg-indigo-500/50 disabled:text-black/60 rounded-full shadow-md transition-all cursor-pointer"
+            >
+              {isDownloading ? (
+                <Loader2 size={13} className="animate-spin" />
+              ) : (
+                <Download size={13} />
+              )}
+              <span>{isDownloading ? 'Downloading...' : 'Download PDF'}</span>
+            </button>
             <button
               id="btn-print-action"
               onClick={handlePrint}
-              className="flex items-center space-x-2 px-4 py-2 text-xs font-bold text-white bg-indigo-500 hover:bg-indigo-400 rounded-lg shadow-md transition-all cursor-pointer"
+              className="flex items-center space-x-2 px-4 py-2 text-xs font-bold text-zinc-300 hover:text-white bg-zinc-800 hover:bg-zinc-700 rounded-full shadow-sm transition-all cursor-pointer"
             >
-              <Printer size={14} />
-              <span>Print / Save PDF</span>
+              <Printer size={13} />
+              <span>Print / AirPrint</span>
             </button>
             <button
               id="btn-close-print"
               onClick={onClose}
-              className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-100 bg-zinc-900 border border-zinc-800 hover:border-zinc-700 transition-all cursor-pointer"
+              className="p-1.5 rounded-full text-zinc-400 hover:text-zinc-100 bg-zinc-900 border border-zinc-850 hover:border-zinc-700 transition-all cursor-pointer"
               title="Close Preview"
             >
               <X size={16} />
@@ -51,7 +99,10 @@ export default function PrintableCV({ isOpen, onClose }: PrintableCVProps) {
         </div>
 
         {/* Scrollable Printable Document Container */}
-        <div className="p-6 md:p-12 overflow-y-auto bg-white text-gray-950 flex-grow font-sans select-text">
+        <div 
+          ref={cvRef}
+          className="p-6 md:p-12 overflow-y-auto bg-white text-gray-950 flex-grow font-sans select-text"
+        >
           <div className="max-w-3xl mx-auto space-y-8 print-document text-left">
             
             {/* CV Header */}
